@@ -64,7 +64,7 @@ For the update API, the request body or params was not specified in the specs. H
 2.	name 
 3.	salary
 4.	startDate
-Optional: I have exported json file for Postman which comes preloaded with the requests required for testing. Please feel free to use the file.
+Optional: I have exported json file for Postman "NPHC.postman_collection.json" which comes preloaded with the requests required for testing. Please feel free to use the file.
 Future improvement on solutions:
 For future improvements, I would like to implement a proper converter for the request params. Currently it is using the default converter which is unable to respond to exception handling in an elegant way. By implementing the Convert for class Employee, parsing exception can be integrated and return a proper responise entity.
 Due to lack of time, was unable to implement mock mvc and Mockito for testing which can smooth out testing greatly. An improvement if given the time would like to implement these features.
