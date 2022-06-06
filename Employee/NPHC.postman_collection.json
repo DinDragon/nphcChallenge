@@ -1,0 +1,171 @@
+{
+	"info": {
+		"_postman_id": "00b08fd6-b3c1-4119-abdb-307e6f113d30",
+		"name": "NPHC",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "97712"
+	},
+	"item": [
+		{
+			"name": "Create Employee",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\" : \"emp0003\",\r\n    \"login\" : \"Ron20\",\r\n    \"name\" : \"Ron Weasley\",\r\n    \"salary\" : \"2400.20\",\r\n    \"startDate\" : \"2013-06-19\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/users/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"users",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Employee",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\" : \"emp0003\",\r\n    \"login\" : \"Ron20\",\r\n    \"name\" : \"Ron Weasley\",\r\n    \"salary\" : \"2400.20\",\r\n    \"startDate\" : \"2013-06-19\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/users/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"users",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetEmployeeList",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/users/?minSalary=0&maxSalary=400000&offset=0&limit=4&sortBy=salary&order=desc",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"users",
+						""
+					],
+					"query": [
+						{
+							"key": "minSalary",
+							"value": "0"
+						},
+						{
+							"key": "maxSalary",
+							"value": "400000"
+						},
+						{
+							"key": "offset",
+							"value": "0"
+						},
+						{
+							"key": "limit",
+							"value": "4"
+						},
+						{
+							"key": "sortBy",
+							"value": "salary"
+						},
+						{
+							"key": "order",
+							"value": "desc"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update Employee",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"id\" : \"e0001\",\r\n    \"login\" : \"Ron20\",\r\n    \"name\" : \"Ron Weasley\",\r\n    \"salary\" : \"2400.20\",\r\n    \"startDate\" : \"2013-06-19\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/users/emp0004",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"users",
+						"emp0004"
+					],
+					"query": [
+						{
+							"key": "name",
+							"value": "new name",
+							"disabled": true
+						},
+						{
+							"key": "salary",
+							"value": "9000",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Upload Employee List",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Get Employee",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	]
+}
