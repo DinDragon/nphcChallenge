@@ -14,7 +14,7 @@ public interface EmployeeRepository
 
     @Query("Select e from Employee e where e.login = ?1")
     Optional<Employee> findEmployeeByLogin(String login);
-    @Query("Select e from Employee e where e.login != ?1 and e.id = ?2")
+    @Query("Select e from Employee e where e.login = ?1 and e.id != ?2")
     Optional<Employee> findEmployeeByLoginWithDifferentId(String login,String Id);
 
 }

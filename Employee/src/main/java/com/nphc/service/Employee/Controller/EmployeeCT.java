@@ -1,14 +1,14 @@
 package com.nphc.service.Employee.Controller;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import com.nphc.service.Employee.Constant;
 import com.nphc.service.Employee.Service.EmployeeService;
 import com.nphc.service.Employee.TO.Employee;
-import com.nphc.service.Employee.Util.EmployeeResultBuilder;
+import com.nphc.service.Employee.Util.EmployeeListResultBuilder;
+import com.nphc.service.Employee.Util.EmployeeUtil;
 import com.nphc.service.Employee.Util.MessageBuilder;
 import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
-import com.opencsv.exceptions.CsvConstraintViolationException;
-import com.opencsv.exceptions.CsvDataTypeMismatchException;
-import org.apache.tomcat.jni.Local;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,12 +19,8 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @RestController
 @RequestMapping(path = "/users/")
@@ -35,10 +31,9 @@ public class EmployeeCT {
     public EmployeeCT(EmployeeService employeeService) {
         this.employeeService = employeeService;
     }
-
+    public EmployeeUtil employeeUtil = new EmployeeUtil();
     @GetMapping
     public ResponseEntity getEmployeeList(
-
             @RequestParam(value = "minSalary", required = false) String minSalaryStr,
             @RequestParam(value = "maxSalary", required = false) String maxSalaryStr,
             @RequestParam(value = "offset", required = false) String offsetStr,
@@ -114,19 +109,86 @@ public class EmployeeCT {
             return new ResponseEntity(new MessageBuilder("Failed. limit is smaller than 0."), HttpStatus.BAD_REQUEST);
         }
 
-        System.out.println("inputs: " + minSalary + ", " + maxSalary + ", " + ", " + offset + ", " + limit + ", " + sortBy);
+        System.out.println("inputs parsed: " + minSalary + ", " + maxSalary + ", " + ", " + offset + ", " + limit + ", " + sortBy);
 
-        return new ResponseEntity(new EmployeeResultBuilder(employeeService.getEmployeeListByFilter(minSalary, maxSalary, offset, limit, sortBy, order, name)),HttpStatus.OK);
+        return new ResponseEntity(new EmployeeListResultBuilder(employeeService.getEmployeeListByFilter(minSalary, maxSalary, offset, limit, sortBy, order, name)),HttpStatus.OK);
     }
 
     @PostMapping
-    public void createEmployee(@RequestBody Employee employee){
-        employeeService.createEmployee(employee);
+    public ResponseEntity createEmployee(@RequestBody Employee employee){
+        String message = employeeService.createEmployee(employee);
+        if(message.equals(Constant.EMPLOYEE_SERVICE_MESSAGE.CREATE_SUCCESS)){
+            return new ResponseEntity(new MessageBuilder(message),HttpStatus.resolve(201));
+        }else{
+            return new ResponseEntity(new MessageBuilder(message),HttpStatus.resolve(400));
+        }
+
+    }
+    @GetMapping(path = "{id}")
+    public ResponseEntity getEmployeeById(@PathVariable("id") String id){
+        Employee employee = new Employee();
+        if(id != null){
+            try {
+                employee = employeeService.getEmployeeById(id);
+                return new ResponseEntity(employee, HttpStatus.OK);
+            }catch(NoSuchElementException e){
+                return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.NO_SUCH_EMPLOYEE), HttpStatus.resolve(400));
+            }catch(Exception e){
+                return new ResponseEntity(new MessageBuilder("Bad input."), HttpStatus.resolve(400));
+            }
+        }else{
+            System.out.println("Employee id passed is null or blank.");
+            return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.NO_SUCH_EMPLOYEE), HttpStatus.resolve(400));
+        }
+
+    }
+    @PutMapping(path = "{id}")
+    public ResponseEntity updateEmployee(@PathVariable("id") String id,
+                                         @RequestParam(value = "login",required = false) String login,
+                                         @RequestParam(value = "name",required = false) String name,
+                                         @RequestParam(value = "salary",required = false) String salaryStr,
+                                         @RequestParam(value = "startDate",required = false) String startDateStr){
+        float salary = 0;
+        LocalDate startDate = null;
+        if(salaryStr != null){
+            try {
+                salary = Float.parseFloat(salaryStr);
+            }catch(NumberFormatException e){
+                System.out.println(e.getMessage());
+                return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_SALARY),HttpStatus.resolve(400));
+            }
+        }
+        if(startDateStr != null){
+            try{
+                startDate = employeeUtil.convertInputDateString(startDateStr);
+            }catch (DateTimeParseException e){
+                System.out.println(e.getMessage());
+                return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_DATE),HttpStatus.resolve(400));
+            }
+        }
+        String message = employeeService.updateEmployee(id, login, name, salary, startDate);
+        if(message.equals(Constant.EMPLOYEE_SERVICE_MESSAGE.UPDATE_SUCCESS)) {
+            return new ResponseEntity(new MessageBuilder(message), HttpStatus.resolve(200));
+        }else{
+            return new ResponseEntity(new MessageBuilder(message), HttpStatus.resolve(400));
+        }
+    }
+
+    @DeleteMapping(path = "{id}")
+    public ResponseEntity deleteEmployee(@PathVariable("id") String id){
+        String message = employeeService.deleteEmployee(id);
+        if(message.equals(Constant.EMPLOYEE_SERVICE_MESSAGE.DELETE_SUCCESS)){
+            return new ResponseEntity(new MessageBuilder(message), HttpStatus.resolve(200));
+        }else{
+            return new ResponseEntity(new MessageBuilder(message), HttpStatus.resolve(400));
+        }
     }
 
     @PostMapping("/upload")
     public ResponseEntity uploadCSVFile(@RequestParam("file") MultipartFile file) {
         // validate file
+        boolean updateOrCreateReq = false;
+        List<Employee> employees = new ArrayList<Employee>();
         if (file.isEmpty() || !file.getOriginalFilename().contains(".csv")) {
             return new ResponseEntity(new MessageBuilder("Invalid file type. File must be of type .csv"), HttpStatus.PRECONDITION_FAILED);
         } else {
@@ -141,14 +203,29 @@ public class EmployeeCT {
                         .build();
 
                 // convert `CsvToBean` object to list of users
-                List<Employee> employees = csvToBean.parse();
+                employees = csvToBean.parse();
                 //Validate entire list first
                 for(Employee employee: employees){
-                    if(!employeeService.validateEmployee(employee)){
-                        return new ResponseEntity(new MessageBuilder("Data validation failed on employee: " + employee.getId()),HttpStatus.PRECONDITION_FAILED);
+                    if(employeeService.checkDuplicateLogin(employee.getLogin(), employee.getId())){
+                        return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.DUPLICATE_LOGIN + "employee id : " + employee.getId() + " login id: " + employee.getLogin()),HttpStatus.PRECONDITION_FAILED);
                     }
-                    if(employeeService.checkDuplicateLogin(employee)){
-                        return new ResponseEntity(new MessageBuilder("Duplicate employee login found for employee : " + employee.getId()) + " login id: " + employee.getLogin(),HttpStatus.PRECONDITION_FAILED);
+                    if(!employeeService.validateEmployeeId(employee.getId())){
+                        return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_EMPLOYEE_ID + " employee : " + employee.getId() + " login id: " + employee.getLogin()),HttpStatus.PRECONDITION_FAILED);
+                    }
+                    if(!employeeService.validateEmployeeLogin(employee.getLogin())){
+                        return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_LOGIN + " employee : " + employee.getId() + " login id: " + employee.getLogin()),HttpStatus.PRECONDITION_FAILED);
+                    }
+                    if(!employeeService.validateEmployeeName(employee.getName())){
+                        return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_NAME + " employee : " + employee.getId() + " login id: " + employee.getLogin()),HttpStatus.PRECONDITION_FAILED);
+                    }
+                    if(!employeeService.validateEmployeeSalary(employee.getSalary())){
+                        return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_SALARY + " employee : " + employee.getId() + " login id: " + employee.getLogin()),HttpStatus.PRECONDITION_FAILED);
+                    }
+                    if(!employeeService.validateEmployeeStartDate(employee.getStartDate())){
+                        return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_DATE + " employee : " + employee.getId() + " login id: " + employee.getLogin()),HttpStatus.PRECONDITION_FAILED);
+                    }
+                    if(employeeService.checkCreateOrUpdateRequired(employee)){
+                        updateOrCreateReq = true;
                     }
                 }
                 for(Employee employee: employees){
@@ -164,29 +241,48 @@ public class EmployeeCT {
                     }
                 }
 
-                for(Employee employee: employees){
-                    System.out.println(employee.getName());
-                    System.out.println(employee.getStartDate());
-                    String message = employeeService.createOrUpdateEmployeeIfExist(employee);
-                }
 
-            }catch (Exception ex) {
-                return new ResponseEntity(new MessageBuilder("Unable to parse CSV data. Please check data format is correct."), HttpStatus.EXPECTATION_FAILED);
+
+            }
+            catch (Exception ex) {
+                throw new RuntimeException(ex);
+                //return new ResponseEntity(new MessageBuilder("Unable to parse CSV data. Please check data format is correct." ), HttpStatus.EXPECTATION_FAILED);
 
             }
         }
-        return new ResponseEntity(new MessageBuilder("Successfully updated employee list."), HttpStatus.OK);
+        if(updateOrCreateReq){
+            for(Employee employee: employees){
+//                System.out.println(employee.getName());
+//                System.out.println(employee.getStartDate());
+                String message = employeeService.createOrUpdateEmployeeIfExist(employee);
+            }
+            return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.UPDATE_SUCCESS), HttpStatus.resolve(201));
+        }else{
+            return new ResponseEntity(new MessageBuilder("Nothing to update or create."), HttpStatus.resolve(200));
+        }
+
 
     }
 
-    @DeleteMapping(path = "{id}")
-    public void deleteEmployee(@PathVariable("id") String id){
-        employeeService.deleteEmployee(id);
+
+
+    @ExceptionHandler({ DateTimeParseException.class, InvalidFormatException.class, NumberFormatException.class })
+    public ResponseEntity handleDateException(Exception e) {
+        System.out.println(e.getMessage());
+        if(e.getMessage().contains("startDate")) {
+            return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_DATE), HttpStatus.resolve(400));
+        }else if(e.getMessage().contains("salary")){
+            return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.INVALID_SALARY),HttpStatus.resolve(400));
+        }else{
+            return new ResponseEntity(new MessageBuilder(Constant.EMPLOYEE_SERVICE_MESSAGE.FAILED),HttpStatus.resolve(500));
+        }
     }
 
-//    @PutMapping(path = "{id}")
-//    public void updateEmployee(@PathVariable String id, @RequestParam(required = false) String name, @RequestParam(required = false) float salary){
-//        employeeService.updateEmployee(id, name, salary);
+//    @ExceptionHandler({ InvalidFormatException.class })
+//    public ResponseEntity handleFloatException() {
+//
 //    }
+
+
 
 }

@@ -21,12 +21,21 @@ class EmployeeRepositoryImpl implements CustomEmployeeRepository{
         }
 
         queryString = queryString + "ORDER BY e." + sortBy + " " + order;
-        return entityManager.
-                createQuery(queryString, Employee.class).
-                setParameter("minSalary", minSalary).
-                setParameter("maxSalary", maxSalary).
-                setMaxResults(limit).
-                setFirstResult(offset).
-                getResultList();
+        if(limit > 0) {
+            return entityManager.
+                    createQuery(queryString, Employee.class).
+                    setParameter("minSalary", minSalary).
+                    setParameter("maxSalary", maxSalary).
+                    setMaxResults(limit).
+                    setFirstResult(offset).
+                    getResultList();
+        }else{
+            return entityManager.
+                    createQuery(queryString, Employee.class).
+                    setParameter("minSalary", minSalary).
+                    setParameter("maxSalary", maxSalary).
+                    setFirstResult(offset).
+                    getResultList();
+        }
     }
 }

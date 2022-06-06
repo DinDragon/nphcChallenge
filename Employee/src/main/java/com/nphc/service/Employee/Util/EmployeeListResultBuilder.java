@@ -4,7 +4,7 @@ import com.nphc.service.Employee.TO.Employee;
 
 import java.util.List;
 
-public class EmployeeResultBuilder {
+public class EmployeeListResultBuilder {
     public List<Employee> results;
 
     public List<Employee> getResults() {
@@ -15,7 +15,7 @@ public class EmployeeResultBuilder {
         this.results = results;
     }
 
-    public EmployeeResultBuilder(List<Employee> results) {
+    public EmployeeListResultBuilder(List<Employee> results) {
         this.results = results;
     }
 }
